@@ -99,7 +99,8 @@
 4. schtasks 手动建被 EDR 拒，但 memreduct 官方 install_clean_task.ps1 可过（姿势正确）。
 5. 页面 fetch 超时：API 6s/temps 12s——低于此会在冷调用期误判失败。
 6. Node/Playwright 在本机偶发 OOM（系统 commit 高）——先触发一次清理再跑验证。
-7. `make webui` 会清空 `public/`（连带删 dashboard）——恢复 echarts.min.js + index.html。
+7. ~~`make webui` 会清空 `public/`（连带删 dashboard）~~ **已随 2026-10-20 迁仓消除**（前端
+   入本仓 `web/` 并入库，`git checkout -- web/` 即恢复；坑 7 保留作历史教训）。
 8. **CPU 间歇 0.0%（v3.3 已修）**：Glances Webserver 每个插件 API 请求都**无条件触发**该插件
    update（`glances_restful_api.py __update_stats` 带 plugins_list 时绕过节流）且全程**无锁**；
    多客户端并发时 psutil 非阻塞差值采样（`cpu_percent`/`cpu_times_percent` interval=0）被并发/

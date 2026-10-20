@@ -13,6 +13,7 @@
 | 传感器 tab（温度 15 / 风扇 2 / 功耗 5；GPU 用户态 + 提权 writer 合并 + ACPI） | ✅（CPU/主板风扇硬件不可读为已知边界） |
 | 标题栏轮播 CPU/内存占比；断线 banner 保旧值 | ✅ |
 | ECharts 三层加载链（本机 → CDN 兜底固化 → SVG 降级），零白屏 | ✅ |
+| 界面风格三主题（黑/白/彩循环切换，localStorage `hud-theme` 两页共享，图表色 CSS 变量单一真源，切换不刷新） | ✅（verify 组14 断言覆盖） |
 | 移动端适配（375px 无横向溢出） | ✅（verify 断言覆盖） |
 | CPU 0% 坏帧净化（上游并发竞态，客户端三处守卫） | ✅ |
 | 数据源 | Glances :61208（HKCU Run 自启，禁 processlist/processcount 两插件） |

@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>磁盘清理控制台 · Glances</title>
+<!-- 主题防闪：与大屏共享 hud-theme（黑/白/彩） -->
+<script>document.documentElement.dataset.theme = localStorage.getItem('hud-theme') || 'dark';</script>
 <style>
 /* ============ 设计 token（与大屏 index.html 同源） ============ */
 :root {
@@ -16,6 +18,30 @@
   --mono: 'Cascadia Mono', Consolas, 'Courier New', monospace;
   --sans: 'Bahnschrift', 'Segoe UI', 'Microsoft YaHei', sans-serif;
 }
+/* ============ 主题：白 / 彩（黑即 :root 默认）——token 与大屏 index.html 同源 ============ */
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f2efe8; --surface: #ffffff; --surface-2: #eceae2;
+  --grid: #ddd6c8; --grid-2: #c9c1b0; --border: #ddd6c8;
+  --ink: #1f2933; --ink-2: #52606d; --ink-3: #8494a1;
+  --amber: #b87700;
+  --s-cpu: #a87300; --s-mem: #0077b6; --s-swap: #c0393b; --s-load: #7b5cd6; --s-proc: #c05621;
+  --st-good: #178a4c; --st-warn: #b26a00; --st-crit: #d6364a;
+}
+html[data-theme="light"] header { background: rgba(255,255,255,.92); }
+html[data-theme="light"] body::after { background: radial-gradient(ellipse at 50% 0%, transparent 60%, rgba(120,108,80,.14)); }
+
+html[data-theme="color"] {
+  --bg: #130a24; --surface: #1d1136; --surface-2: #170e2b;
+  --grid: #3b2b60; --grid-2: #4d3a78; --border: #3b2b60;
+  --ink: #e9e2f8; --ink-2: #b3a6d9; --ink-3: #7d6fa8;
+  --amber: #ff5ec4;
+  --s-cpu: #ffd166; --s-mem: #06d6a0; --s-swap: #ef476f; --s-load: #9d4edd; --s-proc: #118ab2;
+  --st-good: #06d6a0; --st-warn: #ffd166; --st-crit: #ef476f;
+}
+html[data-theme="color"] header { background: rgba(23,14,43,.92); }
+html[data-theme="color"] body::after { background: radial-gradient(ellipse at 50% 0%, transparent 55%, rgba(10,4,22,.6)); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { color-scheme: dark; }
 body {
@@ -276,6 +302,7 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
   <span class="brand">磁盘清理控制台</span>
   <span class="sub" id="h-host"></span>
   <span class="led" id="h-led"></span>
+  <button class="btn ghost" id="btn-theme" title="界面风格切换（黑/白/彩循环）：黑=暗色 HUD · 白=浅色纸感 · 彩=夜彩霓虹" style="padding:4px 11px;min-height:0;font-size:12px">◐ 黑</button>
 </header>
 <ol id="stepper" role="list">
   <li data-s="1" class="on"><i><b>1</b></i><span>分析</span></li>
@@ -375,6 +402,21 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
    安全：默认 dry-run；C 级模态中断声明门禁；全程不绕过服务端校验（保护名单/TOCTOU/E 盘余量）。 */
 'use strict';
 const TOKEN = 'Glc-2026-mc-7f3a91';
+
+/* 界面风格（黑/白/彩）：与大屏共享 localStorage 键 hud-theme，纯 CSS 切换即时生效 */
+const THEME_ORDER = ['dark', 'light', 'color'];
+const THEME_NAME = { dark: '黑', light: '白', color: '彩' };
+(function () {
+  const b = document.getElementById('btn-theme');
+  const sync = () => { b.textContent = '◐ ' + THEME_NAME[document.documentElement.dataset.theme || 'dark']; };
+  b.addEventListener('click', () => {
+    const next = THEME_ORDER[(THEME_ORDER.indexOf(document.documentElement.dataset.theme || 'dark') + 1) % 3];
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('hud-theme', next); } catch {}
+    sync();
+  });
+  sync();
+})();
 
 /* ---------- util（与大屏同源） ---------- */
 const $ = id => document.getElementById(id);

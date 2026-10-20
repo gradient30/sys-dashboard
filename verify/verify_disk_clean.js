@@ -46,7 +46,12 @@ async function watchRescan() {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = [];
   page.on('pageerror', e => errs.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    // 网络层资源探测噪音跳过（大屏对已禁用插件端点的首探 400，页面逻辑会自动移出轮询）——非 JS 逻辑错误
+    if (/^Failed to load resource/.test(m.text())) return;
+    errs.push('console: ' + m.text());
+  });
   let commits = 0, dryruns = 0;
   page.on('request', r => {
     if (r.url().includes('/disk/clean')) (r.postData() || '').includes('"commit":true') ? commits++ : dryruns++;
@@ -189,8 +194,34 @@ async function watchRescan() {
   const btnH = await page.locator('#actbar .btn').first().evaluate(el => el.getBoundingClientRect().height);
   ok(btnH >= 40, `组13 移动端按钮高 ≥40px（实际 ${btnH.toFixed(0)}）`);
 
+  // ---- 组14：界面风格三主题（黑/白/彩，localStorage 键 hud-theme 两页共享） ----
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => localStorage.removeItem('hud-theme'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(600);
+  ok((await page.locator('#btn-theme').count()) === 1, '组14 clean 页主题按钮存在');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme === 'dark'), '组14 无存储时默认黑');
+  const bgOf = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const bgDark = await bgOf();
+  await page.click('#btn-theme');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme === 'light'), '组14 一次点击 → 白');
+  const bgLight = await bgOf();
+  ok(bgLight !== bgDark, `组14 白主题背景变化（${bgDark} → ${bgLight}）`);
+  await page.click('#btn-theme');
+  ok(await page.evaluate(() => document.documentElement.dataset.theme === 'color'), '组14 二次点击 → 彩');
+  const bgColor = await bgOf();
+  ok(bgColor !== bgDark && bgColor !== bgLight, `组14 彩主题背景再变（→ ${bgColor}）`);
+  ok(await page.evaluate(() => localStorage.getItem('hud-theme') === 'color'), '组14 localStorage 持久化');
+  // 同 context 内导航到大屏：防闪 script 应读同一存储直出彩主题，图表系列色 token 同步切换
+  await page.goto('http://localhost:61210/', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  ok(await page.evaluate(() => document.documentElement.dataset.theme === 'color'), '组14 大屏读同一存储直出彩主题（防闪 script）');
+  ok((await page.locator('#btn-theme').count()) === 1, '组14 大屏主题按钮存在');
+  ok((await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--s-cpu').trim())) === '#ffd166', '组14 彩主题系列色 token 已切换');
+  await page.evaluate(() => localStorage.removeItem('hud-theme'));   // 还原默认黑，不残留彩主题
+
   ok(errs.length === 0, '全程零 JS 错误' + (errs.length ? '：' + errs.join(' ;; ') : ''));
   await browser.close();
-  console.log(process.exitCode ? '存在失败项' : '磁盘清理控制台（/clean）13 组验证全部通过');
+  console.log(process.exitCode ? '存在失败项' : '磁盘清理控制台（/clean）14 组验证全部通过');
   process.exit(process.exitCode || 0);
 })();

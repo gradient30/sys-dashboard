@@ -1,0 +1,18 @@
+# 运行数据（保留目录结构，数据不入库）
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.jsonl
+data/*.log
+
+# 可再生
+__pycache__/
+*.pyc
+*.log
+lhm/lhm_err.txt
+
+# 前端验证环境（playwright）
+verify/node_modules/
+
+# 临时
+*.tmp

@@ -1,0 +1,29 @@
+{
+  "id": "memclean-svc",
+  "name": "内存清理服务",
+  "slot": "C-02",
+  "kind": "run",
+  "status": "在用",
+  "summary": "监听 61210 的服务:①「清理内存」按钮——MEM.REDUCT 同源方案(计划任务桥→mem-clean.ps1,NT 层 8 区域);②GET /temps 温度(15 传感器);③GET /history 持久历史(SQLite);④GET / 大屏短路径入口。统一管理:dev.ps1(状态/启停/清理/日志)。两件套自启(Glances+本服务)。",
+  "entry": "index.html",
+  "port": 61210,
+  "start": ".\\dev.ps1",
+  "tags": [
+    "可运行",
+    "内存",
+    "服务",
+    "大屏"
+  ],
+  "updated": "2026-10-06",
+  "links": [
+    {
+      "label": "健康检查",
+      "href": "http://127.0.0.1:61210/ping",
+      "requires": "server"
+    },
+    {
+      "label": "手动启动命令",
+      "href": "docs/start.md"
+    }
+  ]
+}

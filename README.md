@@ -17,13 +17,18 @@
 ## 快速上手
 
 ```powershell
-cd D:\workspace_test\github_desk\sys-dashboard
+cd <本仓库 clone 位置>          # 本机为 D:\workspace_test\github_desk\sys-dashboard
 .\dev.ps1          # 选项式菜单：[1] 状态总览 [2] 启动缺失 [3] 重启 [5] 温度 writer 提权重启 …
-# 或手动起服务：
-#   C:\Python\Python311\pythonw.exe memclean_svc.py
+# 或手动起服务：pythonw memclean_svc.py（需 Python ≥3.10 + psutil）
 ```
 
 重启机器后：Glances 数据源自启（HKCU Run）；本服务与温度 writer 需 `dev.ps1 [2]`（后者 `[5]` 需一次 UAC）。
+
+**部署到新机器**：① Python ≥3.10 + `pip install psutil`；② 数据源：本机跑 Glances webserver
+（:61208，见下表——页面从 :61210 打开时请求 `同一主机:61208`；无本机实例时改
+`web/index.html` 的 `API_BASE`（搜索 `61208`）指向远端）；③ 建议修改清理 TOKEN
+（`memclean_svc.py` 与两页面 JS 三处同步，见 CLAUDE.md）；④ CPU/存储温度需 PawnIO 驱动
+（`lhm/install_pawnio.ps1`，TECH §2）。
 
 ## 目录结构
 

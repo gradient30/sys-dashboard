@@ -5,11 +5,13 @@
 $ErrorActionPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
-$PY      = 'C:\Python\Python311\python.exe'
-$PYW     = 'C:\Python\Python311\pythonw.exe'
+$PY      = (Get-Command python.exe -ErrorAction SilentlyContinue).Source
+if (-not $PY -or -not (& $PY -c 'print(1)' 2>$null)) { $PY = 'C:\Python\Python311\python.exe' }   # 本机回退
+$PYW     = Join-Path (Split-Path $PY -Parent) 'pythonw.exe'
+if (-not (Test-Path $PYW)) { $PYW = $PY }                        # 无 pythonw 时退控制台版
 $SVC     = $PSScriptRoot                       # 仓库根（与服务端脚本平铺同级）
-$GLANCES = Join-Path (Split-Path $PSScriptRoot -Parent) 'glances'   # 兄弟目录推导
-$TSIP    = '100.81.213.23'
+$GLANCES = Join-Path (Split-Path $PSScriptRoot -Parent) 'glances'   # 兄弟目录推导（外部依赖，缺失时仅 Glances 启动不可用）
+$TSIP    = 'localhost'                         # 本机打开大屏；手机访问用 Tailscale IP（RUNBOOK §1）
 
 # ---------- 状态检测 ----------
 function Test-Port($port) {
@@ -78,7 +80,7 @@ function Show-History {
 }
 function Show-Log {
     Write-Host "`n  == memclean 清理日志（最近 8 条）=="; Get-Content "$env:TEMP\memclean_svc.log" -Tail 8 -ErrorAction SilentlyContinue
-    Write-Host "`n  == Glances 日志（最近 5 条）=="; Get-Content 'C:\Users\admin\AppData\Local\Temp\glances_webserver.log' -Tail 5 -ErrorAction SilentlyContinue
+    Write-Host "`n  == Glances 日志（最近 5 条）=="; Get-Content "$env:TEMP\glances_webserver.log" -Tail 5 -ErrorAction SilentlyContinue
 }
 
 # ---------- 主循环 ----------

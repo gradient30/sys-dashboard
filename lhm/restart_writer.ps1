@@ -7,6 +7,8 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' or Name='python.exe'" 
   Where-Object { $_.CommandLine -like '*lhm_writer.py*' } |
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Seconds 1
-Start-Process -FilePath 'C:\Python\Python311\pythonw.exe' `
+$pyw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source
+if (-not $pyw) { $pyw = 'C:\Python\Python311\pythonw.exe' }   # 本机回退
+Start-Process -FilePath $pyw `
   -ArgumentList (Join-Path $PSScriptRoot '..\lhm_writer.py') -WindowStyle Hidden
 Write-Output 'py-writer restarted'

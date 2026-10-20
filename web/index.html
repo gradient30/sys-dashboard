@@ -926,7 +926,7 @@ async function runCleanup() {
       } catch { /* ping 不通才是真不可达，落到下方提示 */ }
     }
     toast(refused ? '⚠ 清理服务不可达' : '⚠ 清理失败',
-      refused ? `端口 ${CLEAN_PORT} 无响应。服务位于 test/tools/memclean-svc，已注册开机自启；若刚重启请稍候或运行 python memclean_svc.py` : String(e.message), true);
+      refused ? `端口 ${CLEAN_PORT} 无响应。服务位于 sys-dashboard 仓库（memclean_svc.py，经 dev.ps1 [2] 启动）；若刚重启请稍候` : String(e.message), true);
   } finally {
     cleanBusy = false;
     btn.classList.remove('busy');

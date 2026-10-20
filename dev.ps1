@@ -1,14 +1,14 @@
 # ============================================================
 #  Glances 大屏 · 统一管理脚本（选项式菜单）
-#  位置: test\tools\memclean-svc\dev.ps1    用法: .\dev.ps1
+#  位置: sys-dashboard\dev.ps1    用法: .\dev.ps1
 # ============================================================
 $ErrorActionPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $PY      = 'C:\Python\Python311\python.exe'
 $PYW     = 'C:\Python\Python311\pythonw.exe'
-$SVC     = 'D:\workspace_test\github_desk\test\tools\memclean-svc'
-$GLANCES = 'D:\workspace_test\github_desk\glances'
+$SVC     = $PSScriptRoot                       # 仓库根（与服务端脚本平铺同级）
+$GLANCES = Join-Path (Split-Path $PSScriptRoot -Parent) 'glances'   # 兄弟目录推导
 $TSIP    = '100.81.213.23'
 
 # ---------- 状态检测 ----------

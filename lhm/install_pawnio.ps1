@@ -51,7 +51,7 @@ if (-not $ok) { throw "RegisterDevice 失败: $([Runtime.InteropServices.Marshal
 
 # ③ 绑定驱动（从 DriverStore 用已入库的 pawnio.inf）
 $inf = (Get-WindowsDriver -Online | Where-Object OriginalFileName -like '*pawnio*' | Select-Object -First 1).OriginalFileName
-if (-not $inf) { $inf = 'D:\workspace_test\github_desk\test\tools\memclean-svc\lhm\pawnio-x64\PawnIO.inf' }
+if (-not $inf) { $inf = Join-Path $PSScriptRoot 'pawnio-x64\PawnIO.inf' }
 Write-Host "使用 INF: $inf"
 $reboot = $false
 $ok = [RootDev]::UpdateDriverForPlugAndPlayDevices([IntPtr]::Zero, 'Root\PawnIO', $inf, 0, [ref]$reboot)

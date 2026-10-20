@@ -6,8 +6,7 @@
   POST /cleanup/<token> 执行清理（孤儿 cmd/pwsh 终止 + 全进程工作集修剪），
                         返回 JSON：{"ok":true,"before_gib":..,"after_gib":..,"freed_gib":..,...}
 
-用法：  python memclean_svc.py            （前台运行）
-        sc Creating a startup task, see register_autostart()
+用法：  python memclean_svc.py            （前台运行；管理菜单见 dev.ps1）
 依赖：  psutil（已随系统 Python 安装）
 安全：  cleanup 需要路径 token；只绑 Tailscale/本机可达端口，未鉴权者仅能 ping。
 """
@@ -275,8 +274,7 @@ def _temps_snapshot():
     return {'t_cpu': t_cpu, 't_gpu': t_gpu, 'p_cpu': p_cpu, 'p_gpu': p_gpu, 'fan': fan}
 
 
-DASH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'glances',
-                        'glances', 'outputs', 'static', 'public', 'dashboard')
+DASH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'web')
 _STATIC = {   # 短路径静态入口：http://<host>:61210/ 直达大屏
     '/': ('index.html', 'text/html; charset=utf-8'),
     '/index.html': ('index.html', 'text/html; charset=utf-8'),

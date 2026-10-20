@@ -8,5 +8,5 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' or Name='python.exe'" 
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Start-Sleep -Seconds 1
 Start-Process -FilePath 'C:\Python\Python311\pythonw.exe' `
-  -ArgumentList 'D:\workspace_test\github_desk\test\tools\memclean-svc\lhm_writer.py' -WindowStyle Hidden
+  -ArgumentList (Join-Path $PSScriptRoot '..\lhm_writer.py') -WindowStyle Hidden
 Write-Output 'py-writer restarted'

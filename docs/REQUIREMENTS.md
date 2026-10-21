@@ -23,7 +23,7 @@
 | 特性 | 状态 |
 | --- |---|
 | 大屏 header「🧹 清理内存」按钮（token 鉴权） | ✅ |
-| MemReduct 计划任务桥（NT 层 6/8 区域，释放 1~5GB） | ⚠️ **任务 MemReduct-Clean 当前未注册**——按钮实际走 EmptyWorkingSet fallback（本地方案，可用但释放量较小）。补装：memreduct 仓 install_clean_task.ps1（见 RUNBOOK §3） |
+| MemReduct 计划任务桥（NT 层 6/8 区域，释放 1~5GB） | ⚠️ **任务 MemReduct-Clean 当前未注册**——按钮实际走 EmptyWorkingSet fallback（本地方案，释放量较小）。**2026-10-21 审计发现 fallback 路径曾因 `except as e` 块外引用 100% 崩溃**（清理已执行但响应/日志全丢，当日已修复并加回归 `verify_cleanup_api.js`）。补装：memreduct 仓 install_clean_task.ps1（见 RUNBOOK §3） |
 | 清理结果 toast（引擎/释放量/区域数）+ 断连 ping 复核 | ✅ |
 | 服务开机自启 | ⚠️ 未注册（dev.ps1 [2] 或手动 pythonw 起动）。候选改进见 ROADMAP |
 

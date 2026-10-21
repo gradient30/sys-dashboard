@@ -132,3 +132,17 @@
    窄屏媒体查询列改 `width:auto; flex:none` 缩一号 + track 隐藏。教训：**定宽 nowrap 列
    必须按最长实测内容定宽**；span 级重叠断言要比较相邻元素 rect 相交而非容器 scrollWidth。
    （端到端截图经视觉模型发现——该渠道在本控制台曾误报"阶梯缩进"，量测核实后才可信。）
+12. **`except as e` 块外引用 e 必 UnboundLocalError（2026-10-21 审计 P0 实录）**：
+   CPython 在 except 块结束时自动 `del e`，块外再引用即崩。`memclean_svc.py` 兜底清理路径
+   曾因此 **100% 崩溃**（修剪已执行、响应永远发不出、日志不落盘），且被前端"断连 ping
+   复核通过→清理已在后台执行"的兜底进一步掩盖——**`memclean_svc.log` 恒 0 字节是唯一
+   线索**。三教训：① 块内先 `err = str(e)` 再块外用；② `$ErrorActionPreference
+   'SilentlyContinue'`/裸 `except: pass` 会把参数异常静默吞成"语句消失"（曾致 dev.ps1
+   两行从不输出，同模式）；③ 写日志必须独立 try/except 包裹——日志失败不得影响主响应。
+   回归防线：`verify/verify_cleanup_api.js`（断言 200+JSON+日志落盘）。另：坑 8 判据经受住
+   2026-10-21 审计复核——历史库残留 21 行 `cpu=0.0` 经同期 mem/swap/net 上下文比对均为
+   真实极低占用（12 核轻载 round 到 0.00），非坏帧漏网，判据零误杀结论维持。
+13. **传感器数据完整性边界（2026-10-21 审计复核）**：`fan` 列 61% NULL（CPU/主板风扇
+   硬件不可读属已知边界，但意味着趋势图风扇曲线大部分时段断线）；`p_cpu` 恒 0——LHM 的
+   CPU Package 功耗本机读出即 0.0W（硬件/驱动不报，非链路丢失），功耗维度**仅 p_gpu 有效**
+   （其 24W↔46W 跳变为负载波动，非双口径）。ROADMAP 功耗方向已据此修正。

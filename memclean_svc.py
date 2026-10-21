@@ -396,16 +396,20 @@ class H(BaseHTTPRequestHandler):
                 self._json(200, out)
                 return
             except Exception as e:
-                # ② 兜底：本地 EmptyWorkingSet 方案
-                pass
+                # ② 兜底：本地 EmptyWorkingSet 方案（except as e 的 e 在块尾被 del，
+                #    必须块内取出；str(e) 供日志与降级原因透传）
+                err = str(e)[:120]
             stats = do_cleanup()
             time.sleep(2)                       # 等待管理器回收
             after = free_gib()
             out = {'ok': True, 'engine': 'fallback',
                    'before_gib': round(before, 1), 'after_gib': round(after, 1),
-                   'freed_gib': round(after - before, 1), **stats}
-            with open(LOG, 'a', encoding='utf-8') as f:
-                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [fallback:{str(e)[:40]}] freed={out['freed_gib']}GiB trimmed={stats['trimmed']}\n")
+                   'freed_gib': round(after - before, 1), 'degraded_reason': err, **stats}
+            try:
+                with open(LOG, 'a', encoding='utf-8') as f:
+                    f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} [fallback:{err[:40]}] freed={out['freed_gib']}GiB trimmed={stats['trimmed']}\n")
+            except OSError:
+                pass                            # 日志失败不得影响清理响应（审计 P0-2）
             self._json(200, out)
         finally:
             _lock.release()

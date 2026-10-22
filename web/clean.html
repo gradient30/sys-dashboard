@@ -100,8 +100,8 @@ header .led.on { background: var(--st-good); box-shadow: 0 0 6px var(--st-good);
 #stepper li.fail i::after { content: '✗'; }
 #stepper li.fail i b { display: none; }
 
-/* ============ 主区与分区卡 ============ */
-main { max-width: 880px; margin: 0 auto; padding: 18px 16px 8px; }
+/* ============ 主区与分区卡（与大屏同宽 1200 居中） ============ */
+main { max-width: 1200px; margin: 0 auto; padding: 18px 16px 8px; }
 main section { display: none; }
 main section.on { display: block; animation: fadein .25s; }
 @keyframes fadein { from { opacity: 0; transform: translateY(4px); } }

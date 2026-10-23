@@ -64,10 +64,15 @@ function Restart-Writer {
 }
 function Stop-All {
     foreach ($port in 61208, 61210) {
-        Get-NetTCPConnection -LocalPort $port -State Listen | ForEach-Object {
-            Stop-Process -Id $_.OwningProcess -Force
-            Line "  → :$port 已停止" Cyan
-        }
+        # 端口未监听时 Get-NetTCPConnection 无匹配会抛 CIM 错误（SilentlyContinue 不总抑制）——
+        # -ErrorAction Stop + try/catch 兜底，未运行给友好提示
+        $conns = @(try { Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction Stop } catch { @() })
+        if ($conns.Count) {
+            $conns | ForEach-Object {
+                Stop-Process -Id $_.OwningProcess -Force
+                Line "  → :$port 已停止" Cyan
+            }
+        } else { Line "  → :$port 本就未运行，跳过" DarkGray }
     }
     Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' or Name='python.exe'" |
         Where-Object { $_.CommandLine -like '*lhm_writer*' -or $_.CommandLine -like '*memclean_svc*' } |

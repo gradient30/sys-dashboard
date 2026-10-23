@@ -43,6 +43,8 @@ A_RULES = [
          note='只删 3 天前的子项；正在运行程序的锁文件自动跳过'),
     dict(key='npm_cache', label='npm 缓存', kind='whole', root=os.path.join(LP, 'npm-cache')),
     dict(key='uv_cache', label='uv 缓存', kind='whole', root=os.path.join(LP, 'uv', 'cache')),
+    dict(key='pip_cache', label='pip 缓存', kind='whole', root=os.path.join(LP, 'pip', 'cache'),
+         note='wheel 缓存，重下即可（等同 pip cache purge）'),
     dict(key='puppeteer', label='Puppeteer 浏览器', kind='whole', root=os.path.join(UP, '.cache', 'puppeteer'),
          note='浏览器二进制，重下即可'),
     dict(key='nuget_v3', label='NuGet v3-cache', kind='whole', root=os.path.join(LP, 'NuGet', 'v3-cache'),
@@ -61,6 +63,9 @@ B_SEEDS = [
     dict(path=r'D:\Program Files (x86)\Tencent\qqhistory', note='QQ 聊天记录，删了不可恢复'),
     dict(path=os.path.join(LP, 'Feishu'), note='云端消息还在，重装需重新登录'),
     dict(path=r'D:\Microsoft Visual Studio', note='建议走正规卸载而非删目录'),
+    # AI 环境大件（种子同样过 ≥300MB 阈值 + 30 天在用检测；B 级=勾选后移入回收站可回滚）
+    dict(path=os.path.join(UP, '.cache', 'huggingface'), note='AI 模型缓存（HuggingFace）：删除即丢，重下耗时长'),
+    dict(path=os.path.join(UP, '.ollama'), note='本地大模型库（Ollama）：删除即丢，重新 pull 耗时长'),
 ]
 B_DISCOVER = dict(root='D:\\', min_bytes=300 * 2**20, stale_days=30)   # 顶层发现阈值：≥300MB 且 30 天未动
 TRASH_ROOT = r'E:\.trash'                    # B 级回收区：E:\.trash\<yyyyMMdd>\<原名>（人工保留 30 天）

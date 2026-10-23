@@ -36,7 +36,7 @@
 | ③计划：级别卡对比（⌂建议级）、dry-run 明细表（零写盘） | ✅ |
 | ④执行：逐项状态 + C 级时间线 + sessionStorage 任务续接（刷新不丢） | ✅ |
 | ⑤报告：释放大数字 + 盘符水位前后对比（live_fs 实测）+ 审计提示 | ✅ 端到端三方一致实测（报告=水位差=审计行） |
-| A 级（纯缓存静默清，>3 天判定） | ✅ |
+| A 级（纯缓存静默清，>3 天判定） | ✅ 覆盖：用户 Temp/npm/uv/pip/Puppeteer/NuGet v3-cache/codex 安装临时/Docker 镜像+构建缓存（AI 工具环境缓存均有规则，路径缺失优雅跳过） |
 | B 级（30 天未动 robocopy /MOVE 入 `E:\.trash\<yyyyMMdd>\`，可回滚） | ✅（E 盘预校验） |
 | C 级（VHDX 压缩 + pagefile 迁移，模态中断声明门禁） | ⚠️ **桥任务 Glc-DiskClean-C 当前未注册**——安装走 `elevated\install_disk_task.ps1`（-Test 冒烟） |
 | 安全：默认 dry-run、保护名单扫描+执行双查、Docker 绝不 --volumes、token 鉴权、任务服务端保留 30 分钟 | ✅（verify 13 组断言覆盖） |

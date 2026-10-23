@@ -814,12 +814,13 @@ document.addEventListener('click', async e => {
   if (!el) return;
   const act = el.dataset.act;
   if (act === 'home') location.href = '/';
-  else if (act === 'rescan') {
+  else if (act === 'rescan' || act === 'to1') {
+    /* 两处入口同款：s1「⟳ 重新扫描」与 s2「← 重新分析」都真实触发 fresh 重扫
+       （to1 曾只回页轮询旧缓存——"重新分析"名不副实，2026-10-23 修正） */
     S.feedKeys.clear(); $('sc-feed').innerHTML = ''; go(1);
     try { await apiScan(true); } catch (err) { toast('触发扫描失败', err.message, true); }
     pollScan();
   }
-  else if (act === 'to1') { go(1); pollScan(); }
   else if (act === 'to2') { go(2); renderReview(); }
   else if (act === 'to3') { renderLevelUI(); renderPlan(); go(3); }
   else if (act === 'lv') { S.level = el.dataset.v; renderLevelUI(); renderActbar(); }

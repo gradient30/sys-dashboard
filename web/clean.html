@@ -291,6 +291,22 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
   padding: 10px 18px; font-size: 13px; max-width: 92vw; z-index: 30;
   opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; line-height: 1.6;
 }
+/* 即时扫描进度条（sticky：五步任何页 + 滚动常驻；由服务端 progress 逐轮重建，切步骤/刷新/往返大屏均恢复） */
+#scanbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--surface); border: 1px solid var(--amber); border-radius: 8px;
+  padding: 8px 12px 10px; margin: 0 0 14px;
+}
+#scanbar .sb-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#scanbar .sb-t { color: var(--amber); font-size: 12px; letter-spacing: .08em; animation: ledblink 1.4s infinite; }
+#scanbar .sb-phase { color: var(--ink); font-size: 13px; font-weight: 600; }
+#scanbar .sb-note { color: var(--ink-3); font-size: 12px; flex: 1; min-width: 200px; }
+#scanbar .sb-pct { margin-left: auto; color: var(--amber); font-variant-numeric: tabular-nums; font-size: 13px; }
+#scanbar .sb-track { height: 4px; background: var(--surface-2); margin-top: 7px; border-radius: 2px; overflow: hidden; }
+#scanbar .sb-track i { display: block; height: 100%; background: var(--amber); width: 0; transition: width .8s ease; }
+#scanbar.err { border-color: var(--st-crit); }
+#scanbar.err .sb-t { color: var(--st-crit); animation: none; }
+
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.err { border-color: var(--st-crit); }
 #toast small { display: block; color: var(--ink-3); font-size: 11.5px; }
@@ -311,6 +327,13 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
   <li data-s="4"><i><b>4</b></i><span>执行</span></li>
   <li data-s="5"><i><b>5</b></i><span>报告</span></li>
 </ol>
+<div id="scanbar" hidden aria-live="polite">
+  <div class="sb-row">
+    <span class="sb-t">▐ 扫描中</span><span class="sb-phase"></span>
+    <span class="sb-note"></span><span class="sb-pct"></span>
+  </div>
+  <div class="sb-track"><i></i></div>
+</div>
 <main>
   <!-- ① 分析：步骤清单 + 盘符水位 + 发现 feed -->
   <section id="s1" class="on">
@@ -547,14 +570,45 @@ function renderFsInto(elId, fs, fsAfter) {
   }).join('');
 }
 
+/* ---------- 即时进度条：从服务端 progress 逐轮重建（无本地累积态，切页/刷新天然恢复） ---------- */
+const PHASE_META = {
+  fs:      ['盘符水位',     '读取 C/D/E 盘容量与剩余空间（瞬时完成）'],
+  du:      ['A 级缓存测量', '逐个统计缓存目录体积——只测量，不删除任何文件'],
+  b_find:  ['B 级废弃发现', '在 D:\\ 顶层寻找 30 天未动且 ≥300MB 的目录（发现 ≠ 删除）'],
+  docker:  ['Docker 可回收', '查询未使用镜像与构建缓存的可回收占用'],
+  c_info:  ['C 级现状',     '读取 VHDX 与页面文件现状（只读，不做任何更改）'],
+};
+function updateScanbar() {
+  const bar = $('scanbar');
+  if (!bar) return;
+  const p = (S.snap || {}).progress || {};
+  if (scanning()) {
+    bar.hidden = false; bar.classList.remove('err');
+    const meta = PHASE_META[p.phase] || [p.phase || '进行中', ''];
+    bar.querySelector('.sb-phase').textContent = meta[0];
+    bar.querySelector('.sb-note').textContent = meta[1] + (p.note ? ' · ' + p.note : '');
+    bar.querySelector('.sb-pct').textContent = (p.pct ?? 0) + '%';
+    bar.querySelector('.sb-track i').style.width = Math.min(p.pct ?? 0, 100) + '%';
+  } else if (!bar.hidden) {
+    bar.querySelector('.sb-pct').textContent = '100%';
+    bar.querySelector('.sb-track i').style.width = '100%';
+    setTimeout(() => { if (!scanning()) bar.hidden = true; }, 900);   // 完成短暂展示后收起
+  }
+}
+
 /* 扫描轮询：scanning → 1.5s；回到 ready → 自动进审阅 */
 async function pollScan(first) {
   clearTimeout(S.scanT);
   try { S.snap = await apiScan(false); } catch (e) {
     $('sc-steps').innerHTML = `<div class="s fail"><span class="ic">✗</span><span>扫描服务不可达（:61210）</span></div>`;
+    const bar = $('scanbar');
+    bar.hidden = false; bar.classList.add('err');
+    bar.querySelector('.sb-phase').textContent = '连接失败';
+    bar.querySelector('.sb-note').textContent = '扫描服务不可达，重试中——服务端扫描线程不受影响';
     S.scanT = setTimeout(pollScan, 4000);
     return;
   }
+  updateScanbar();
   if (S.step === 1) renderScanLive();
   if (scanning()) {
     S.scanT = setTimeout(pollScan, 1500);
@@ -869,6 +923,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('modal').c
   }
   pollScan(true);
 })();
+
+/* 哨兵：ready 后 pollScan 停轮——别处发起的重扫（他页触发/600s 缓存过期自动）8s 内被感知，
+   进度条照常出现（切标签页回来/停在审阅页都不漏） */
+setInterval(() => { if (!document.hidden && !scanning()) pollScan(); }, 8000);
 </script>
 </body>
 </html>

@@ -76,9 +76,12 @@ async function watchRescan() {
     ok((await page.locator('button[data-act="to2"]').count()) === 1, '组3 重扫期间「使用现有结果」可直达');
   }
 
-  // ---- 组2：ready 自动落 step2 + stepper ----
-  await page.waitForSelector('#s2.on', { timeout: 150000 });
-  ok(true, '组2 重扫完成后自动落 step2（审阅）');
+  // ---- 组2：重扫完成停 s1（被动感知不强制跳审阅；「使用现有结果」直达）----
+  await page.waitForSelector('button[data-act="rescan"]:not([disabled])', { timeout: 240000 });
+  ok((await page.locator('#s1.on').count()) === 1, '组2 重扫完成后停在 s1（磁盘分析页可独立查看）');
+  ok((await page.locator('button[data-act="to2"]').count()) === 1, '组2 「使用现有结果 →」出现');
+  await page.click('button[data-act="to2"]');
+  await page.waitForSelector('#s2.on');
   ok((await page.locator('#stepper li').count()) === 5, '组2 stepper 五节点');
   await page.waitForTimeout(600);
 

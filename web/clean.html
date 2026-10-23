@@ -485,7 +485,7 @@ const S = {
   step: 1, snap: null, level: 'A', bSel: new Set(), sort: 'bytes',
   cOpts: { vhdx: true, pagefile: true }, plan: null,
   taskId: null, task: null, fsBefore: null, fsAfter: null,
-  scanT: 0, taskT: 0, feedKeys: new Set(), previewBusy: false
+  scanT: 0, taskT: 0, feedKeys: new Set(), previewBusy: false, autogo: false
 };
 const scanning = () => { const p = (S.snap || {}).progress || {}; return p.phase && p.phase !== 'ready' && p.phase !== 'idle'; };
 const hasData = () => (S.snap || {}).state === 'ready';
@@ -614,9 +614,11 @@ async function pollScan(first) {
     S.scanT = setTimeout(pollScan, 1500);
     if (S.step === 1) renderActbar();
   } else if (hasData()) {
-    S.feedKeys.clear(); $('sc-feed').innerHTML = '';
     renderReview();
-    if (S.step === 1 || first) go(2);
+    /* 主动重扫（rescan/to1/again 置 autogo）扫完自动进审阅；首开/被动感知停在 s1 展示分析结果
+       （feed 不在此清——三个主动入口各自已清，这里清会把 s1 的发现清单清空后无人再喂） */
+    if (S.step === 1 && S.autogo) { S.autogo = false; go(2); }
+    else if (S.step === 1) renderActbar();        // 停留 s1：按钮组刷新出「使用现有结果 →」
   } else {
     S.scanT = setTimeout(pollScan, 3000);   // idle：等 refresh_loop 拉起
   }
@@ -870,7 +872,9 @@ document.addEventListener('click', async e => {
   if (act === 'home') location.href = '/';
   else if (act === 'rescan' || act === 'to1') {
     /* 两处入口同款：s1「⟳ 重新扫描」与 s2「← 重新分析」都真实触发 fresh 重扫
-       （to1 曾只回页轮询旧缓存——"重新分析"名不副实，2026-10-23 修正） */
+       （to1 曾只回页轮询旧缓存——"重新分析"名不副实，2026-10-23 修正）；
+       主动重扫置 autogo：扫完自动进审阅（首开/被动感知则停在 s1 展示分析结果） */
+    S.autogo = true;
     S.feedKeys.clear(); $('sc-feed').innerHTML = ''; go(1);
     try { await apiScan(true); } catch (err) { toast('触发扫描失败', err.message, true); }
     pollScan();
@@ -892,6 +896,7 @@ document.addEventListener('click', async e => {
   else if (act === 'commit') doCommit();
   else if (act === 'again') {
     S.plan = null; S.task = null; S.taskId = null; S.fsAfter = null; S.bSel.clear();
+    S.autogo = true;                       // 主动新一轮：扫完自动进审阅
     S.feedKeys.clear(); $('sc-feed').innerHTML = ''; go(1);
     try { await apiScan(true); } catch (err) { /* 轮询兜底 */ }
     pollScan();

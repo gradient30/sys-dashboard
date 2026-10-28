@@ -41,6 +41,7 @@
 | C 级（VHDX 压缩 + pagefile 迁移，模态中断声明门禁） | ⚠️ **桥任务 Glc-DiskClean-C 当前未注册**——安装走 `elevated\install_disk_task.ps1`（-Test 冒烟） |
 | 安全：默认 dry-run、保护名单扫描+执行双查、Docker 绝不 --volumes、token 鉴权、任务服务端保留 30 分钟 | ✅（verify 13 组断言覆盖） |
 | 大屏入口 ×2：header「💾 磁盘清理」按钮 + 磁盘页链接（非 61210 端口自动切绝对地址） | ✅ |
+| 空间去向追踪（2026-10-28）：disk_hist 小表每轮扫描记录水位/vhdx，`GET /disk/growth` + 分析页"空间去向"卡（近 14 天占用 Δ + 历史清理释放汇总） | ✅ 增长可观测，防"无脑占用"无从发现 |
 
 ## 非功能需求
 

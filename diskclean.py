@@ -40,22 +40,26 @@ NO_WINDOW = 0x08000000                        # CREATE_NO_WINDOW：服务既定�
 A_RULES = [
     dict(key='user_temp', label='用户 Temp（>3 天）', kind='age_tree',
          root=os.path.join(LP, 'Temp'), age_days=3,
-         note='只删 3 天前的子项；正在运行程序的锁文件自动跳过'),
-    dict(key='npm_cache', label='npm 缓存', kind='whole', root=os.path.join(LP, 'npm-cache')),
-    dict(key='uv_cache', label='uv 缓存', kind='whole', root=os.path.join(LP, 'uv', 'cache')),
+         note='Windows/软件运行临时文件；只删 3 天前的，正在运行程序的锁文件自动跳过'),
+    dict(key='npm_cache', label='npm 缓存', kind='whole', root=os.path.join(LP, 'npm-cache'),
+         note='npm 下载缓存包；删除后下次 install 重新联网下载，不影响已装项目'),
+    dict(key='uv_cache', label='uv 缓存', kind='whole', root=os.path.join(LP, 'uv', 'cache'),
+         note='uv（Python 包管理器）下载缓存；删除后重新下载，不影响已建环境'),
     dict(key='pip_cache', label='pip 缓存', kind='whole', root=os.path.join(LP, 'pip', 'cache'),
          note='wheel 缓存，重下即可（等同 pip cache purge）'),
     dict(key='puppeteer', label='Puppeteer 浏览器', kind='whole', root=os.path.join(UP, '.cache', 'puppeteer'),
-         note='浏览器二进制，重下即可'),
+         note='测试用浏览器二进制；删除后首次运行自动重下'),
     dict(key='nuget_v3', label='NuGet v3-cache', kind='whole', root=os.path.join(LP, 'NuGet', 'v3-cache'),
-         note='只删 v3-cache，不动 .nuget\\packages（全局包本体）'),
+         note='.NET 包下载缓存；只删 v3-cache，不动 .nuget\\packages（全局包本体）'),
     dict(key='codex_tmp', label='codex 安装临时目录（>30 天）', kind='glob_age',
          root=os.path.join(UP, '.cache', 'codex-runtimes'), pattern='codex-runtime-install-*', age_days=30,
-         note='保留 codex-primary-runtime 主目录'),
+         note='codex 升级残留的旧版安装包；保留 codex-primary-runtime 主目录'),
     # 红线：docker 只允许这两条字面量命令，绝无 --volumes（playbook §6.1：
     # 卷里是数据库数据，stopped 容器引用的卷会被连带删除）
-    dict(key='docker_img', label='Docker 无引用镜像', kind='docker', cmds=[['docker', 'image', 'prune', '-a', '-f']]),
-    dict(key='docker_bld', label='Docker 构建缓存', kind='docker', cmds=[['docker', 'builder', 'prune', '-a', '-f']]),
+    dict(key='docker_img', label='Docker 无引用镜像', kind='docker', cmds=[['docker', 'image', 'prune', '-a', '-f']],
+         note='删未被任何容器引用的镜像层；运行中容器与其镜像不受影响'),
+    dict(key='docker_bld', label='Docker 构建缓存', kind='docker', cmds=[['docker', 'builder', 'prune', '-a', '-f']],
+         note='镜像构建中间层；下次 build 重新生成（变慢一次，不影响产物）'),
 ]
 
 # ---------- B 级候选（种子大件 + D:\ 顶层自动发现） ----------
@@ -120,6 +124,30 @@ def _human(n):
 
 
 # ================= 扫描器（后台线程 + (ts, data) 缓存，端点恒缓存读） =================
+def _record_disk_hist(fs, vhdx):
+    """每轮扫描完成记录磁盘水位 + Docker vhdx 体积到 data/history.db.disk_hist。
+    独立小表（不动 metrics），WAL 并发安全 + busy_timeout 兜底；任何失败静默（不拖累扫描）。"""
+    try:
+        import sqlite3
+        row = {f['drive']: f['free_gib'] for f in fs}
+        vhdx_g = vhdx.get('size_gib') or 0
+        db = os.path.join(DATA_DIR, 'history.db')
+        con = sqlite3.connect(db, timeout=10)
+        try:
+            con.execute('PRAGMA busy_timeout=10000')
+            con.execute('CREATE TABLE IF NOT EXISTS disk_hist('
+                        'ts REAL, c_free REAL, d_free REAL, e_free REAL, vhdx_g REAL)')
+            con.execute('INSERT INTO disk_hist VALUES (?,?,?,?,?)',
+                        (time.time(), row.get('C', 0), row.get('D', 0), row.get('E', 0), vhdx_g))
+            # 只留 60 天（600s 一轮 ≈ 8600 行/月，封顶防自身膨胀）
+            con.execute('DELETE FROM disk_hist WHERE ts < ?', (time.time() - 60 * 86400,))
+            con.commit()
+        finally:
+            con.close()
+    except Exception:
+        pass
+
+
 class Scanner:
     _lock = threading.Lock()
     _cache = (0.0, None)                       # (ts, data)
@@ -334,6 +362,7 @@ class Scanner:
                 if s['name'] == 'c_info':
                     s['state'] = 'done'
             cls._state.update(phase='ready', pct=100, note='')   # steps 保留全 done 供前端回看
+        _record_disk_hist(fs, vhdx)             # 水位/vhdx 入史（增长可观测，失败不影响扫描）
 
     @staticmethod
     def _du(root, budget_s):

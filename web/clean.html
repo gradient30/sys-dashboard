@@ -298,6 +298,13 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
   padding: 10px 18px; font-size: 13px; max-width: 92vw; z-index: 30;
   opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; line-height: 1.6;
 }
+/* 空间去向卡（水位 Δ / vhdx Δ / 清理史；负值=占用增长标红） */
+.growth { font-size: 12.5px; line-height: 2; color: var(--ink-2); }
+.growth b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.growth .up { color: var(--st-crit); font-variant-numeric: tabular-nums; }
+.growth .down { color: var(--st-good); font-variant-numeric: tabular-nums; }
+.growth .hist { color: var(--ink-3); font-size: 11.5px; }
+
 /* 即时扫描进度条（sticky：五步任何页 + 滚动常驻；由服务端 progress 逐轮重建，切步骤/刷新/往返大屏均恢复） */
 #scanbar {
   position: sticky; top: 0; z-index: 20;
@@ -352,6 +359,10 @@ h2.sec { font-family: var(--sans); font-size: 14px; letter-spacing: 2px; color: 
     <div class="stcard">
       <div class="cardhead"><span class="t">盘符水位</span><span class="sum">psutil disk_usage 实测</span></div>
       <div class="fswrap" id="sc-fs"></div>
+    </div>
+    <div class="stcard" style="--lv:var(--s-mem)">
+      <div class="cardhead"><span class="t">空间去向（近 14 天）</span><span class="sum" id="growth-sum">—</span></div>
+      <div class="growth" id="growth-body">加载中…</div>
     </div>
     <div class="stcard">
       <div class="cardhead"><span class="t">发现</span><span class="sum" id="sc-feed-n">0 项</span></div>
@@ -601,6 +612,22 @@ function updateScanbar() {
     bar.querySelector('.sb-track i').style.width = '100%';
     setTimeout(() => { if (!scanning()) bar.hidden = true; }, 900);   // 完成短暂展示后收起
   }
+}
+
+/* ---------- 空间去向卡：/disk/growth（水位 Δ + vhdx Δ + 清理史；free 降=占用涨标红） ---------- */
+async function loadGrowth() {
+  const el = $('growth-body'), sum = $('growth-sum');
+  try {
+    const d = await (await fetch('/disk/growth?days=14')).json();
+    if (!d.samples) { el.textContent = '水位记录积累中——每轮磁盘扫描自动记一条（约 10 分钟一条），明天起可看 14 天趋势'; sum.textContent = '积累中'; return; }
+    const fmt = v => v == null ? '—' : `<b class="${v < 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${v.toFixed(1)}G</b>`;
+    const fmtGrow = v => v == null ? '—' : `<b class="${v > 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${v.toFixed(1)}G</b>`;
+    const cur = v => v == null ? '—' : v.toFixed(0) + 'G';
+    el.innerHTML = `占用变化：C 盘 ${fmt(d.c_free_delta)} · D 盘 ${fmt(d.d_free_delta)} · Docker vhdx ${fmtGrow(d.vhdx_delta)}`
+      + `<span class="hist"><br>当前水位 C 余 ${cur(d.c_free)} · D 余 ${cur(d.d_free)} · vhdx ${cur(d.vhdx_g)}`
+      + ` · 历史清理释放 <b>${(d.clean_freed_total / 1024 ** 3).toFixed(1)}G</b>（${d.cleans.length} 次）</span>`;
+    sum.textContent = `样本 ${d.samples} 条`;
+  } catch { el.textContent = '增长数据暂不可用（:61210）'; }
 }
 
 /* 扫描轮询：scanning → 1.5s；回到 ready → 自动进审阅 */
@@ -939,6 +966,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') $('modal').c
 /* 哨兵：ready 后 pollScan 停轮——别处发起的重扫（他页触发/600s 缓存过期自动）8s 内被感知，
    进度条照常出现（切标签页回来/停在审阅页都不漏） */
 setInterval(() => { if (!document.hidden && !scanning()) pollScan(); }, 8000);
+loadGrowth();                                  // 空间去向卡首拉 + 10 分钟刷新
+setInterval(loadGrowth, 600000);
 </script>
 </body>
 </html>

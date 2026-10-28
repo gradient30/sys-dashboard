@@ -12,6 +12,7 @@
 """
 import ctypes
 import json
+from datetime import datetime
 import os
 import sqlite3
 import subprocess
@@ -313,6 +314,45 @@ class H(BaseHTTPRequestHandler):
             return
         if self.path == '/ping':
             self._json(200, {'ok': True, 'svc': 'memclean', 'ts': time.time()})
+        elif self.path.split('?')[0] == '/disk/growth':
+            # 空间去向：近 N 天水位/vhdx 变化（disk_hist，扫描轮自动记录）+ 历次清理释放（audit jsonl）
+            q = urllib.parse.urlparse(self.path).query
+            days = min(int(urllib.parse.parse_qs(q).get('days', ['14'])[0]), 59)
+            since = time.time() - days * 86400
+            first = last = None
+            with _rec_lock:
+                try:
+                    rows = _db.execute('SELECT ts,c_free,d_free,e_free,vhdx_g FROM disk_hist WHERE ts>=? ORDER BY ts', (since,)).fetchall()
+                except Exception:
+                    rows = []
+            if rows:
+                first, last = rows[0], rows[-1]
+            cleans = []
+            try:
+                with open(diskclean.AUDIT_PATH, encoding='utf-8') as f:
+                    for ln in f:
+                        try:
+                            r = json.loads(ln)
+                        except ValueError:
+                            continue
+                        try:                      # ts 为 ISO 字符串（如 2026-10-16T11:18:55）
+                            t = datetime.fromisoformat(r['ts']).timestamp() if r.get('ts') else 0
+                        except (KeyError, ValueError, TypeError):
+                            t = 0
+                        if t >= since and r.get('ok'):
+                            cleans.append({'ts': t, 'level': r.get('level'), 'key': r.get('key'),
+                                           'freed': r.get('bytes_freed') or 0})
+            except OSError:
+                pass
+            def delta(i):
+                return round((last[i] - first[i]), 1) if first and last else None
+            self._json(200, {'ok': True, 'days': days, 'samples': len(rows),
+                             'first_ts': first[0] if first else None, 'last_ts': last[0] if last else None,
+                             'c_free_delta': delta(1), 'd_free_delta': delta(2), 'e_free_delta': delta(3),
+                             'vhdx_delta': delta(4),
+                             'c_free': last[1] if last else None, 'd_free': last[2] if last else None,
+                             'vhdx_g': last[4] if last else None,
+                             'cleans': cleans, 'clean_freed_total': sum(c['freed'] for c in cleans)})
         elif self.path == '/temps':
             t = LhmReader.temps(max_age=3.0)
             f = os.path.join(os.environ.get('TEMP', '/tmp'), 'lhm_temps.txt')

@@ -146,3 +146,33 @@
    硬件不可读属已知边界，但意味着趋势图风扇曲线大部分时段断线）；`p_cpu` 恒 0——LHM 的
    CPU Package 功耗本机读出即 0.0W（硬件/驱动不报，非链路丢失），功耗维度**仅 p_gpu 有效**
    （其 24W↔46W 跳变为负载波动，非双口径）。ROADMAP 功耗方向已据此修正。
+14. **顶格 def 插进 class 体 = 静默截断类（2026-10-28 实录）**：向 Scanner 类方法之间插入
+   模块级函数（顶格 `def`）后，**class 体在该处提前结束**，其后的缩进方法（`_du` 等）沦为
+   该函数的嵌套 def——`py_compile` 与 `import` 均不报错，运行时 `cls._du` 才
+   AttributeError（扫描必失败"保留旧缓存"）。教训：往类文件插模块级函数要么放 class 定义
+   之前，要么放文件尾；插入后用 `hasattr(cls, '_du')` 一类的结构自检再部署。
+   同日伴生坑：audit jsonl 的 `ts` 是 **ISO 字符串**、释放量字段名是 **bytes_freed**——
+   按 float 比较时间戳（`r.get('ts',0) >= since`）会 TypeError 逃逸 handler 断连
+   （curl 空响应），需 `datetime.fromisoformat()` 转换；汇总历史曾用错字段名 `bytes`
+   读出恒 0（实际累计释放 11.1G）。
+
+## 6. 空间去向追踪方案（2026-10-28，用户"两周 C/D 各 +10G"核实结论）
+
+**核实数据**（mtime 分桶实测，去 junction 双计——`LOCALAPPDATA\Docker` 是指向
+`D:\Docker` 的符号链接，11.96G 物理在 D）：近 14 天真实增长 = **Docker vhdx +11.9G**
+（docker_data.vhdx 只涨不缩，内含镜像 3.6G/卷 5.3G + 水分）、**微信（PF x86\Tencent）
++6.7G**、**workspace_test +8.0G**（研发产物，正常）；C 盘另 wsl vhdx +5.0G、codex +1.0G。
+结论：研发缓存类（npm/uv/pip/Temp）非主凶且 A 级已覆盖（历史累计清出 11.1G），
+大头是 **Docker vhdx 结构性膨胀 + 应用数据（微信）+ 正常研发增长**。
+
+**机制**（借鉴 360 清理的分类清晰/描述质量/清理史）：
+- `disk_hist` 小表（history.db，独立于 metrics）：每轮扫描（600s）记录
+  ts/c_free/d_free/e_free/vhdx_g，60 天滚动保留——水位与 vhdx 趋势可观测；
+- `GET /disk/growth?days=N`：首尾水位 Δ + vhdx Δ + audit 清理史汇总（含 bytes_freed）；
+- /clean 分析页"空间去向"卡：近 14 天占用变化（free 降=红）+ 当前水位 +
+  历史清理释放总量/次数，10 分钟自刷；
+- A 级 9 条规则 note 全量补齐"这是什么 + 删了会怎样"式描述。
+
+**行动项**（人工决策）：Docker 卷 5.3G reclaimable（99% 未引用）须逐卷确认价值后
+`docker volume prune`；C 级 VHDX 压缩（装 Glc-DiskClean-C）可回收 vhdx 水分 ~3G；
+微信缓存走客户端内置清理；wsl vhdx 可迁移 E 盘（opt-in）。
